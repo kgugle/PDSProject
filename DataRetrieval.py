@@ -45,9 +45,11 @@ def first_page(br,state_num):
 
 def fill_crime_cross_ids(br):
 	second = br.submit()
+	#print(second)
 	response = second
 	CCI_arr = []
-	br.form = list(br.forms())[0]  
+	br.form = list(br.forms())[0]
+	#print(br.form)
 	CrimeCrossId = br.form.find_control("CrimeCrossId")
 	if CrimeCrossId.type == "select":  # means it's class ClientForm.SelectControl
 	    for item in CrimeCrossId.items:
@@ -57,7 +59,7 @@ def fill_crime_cross_ids(br):
 def second_page(br,police_id):
 	#sprint(br)
 	second = br.submit()
-	print('reached after submit')
+	#print('reached after submit')
 	response = second
 
 	br.form = list(br.forms())[0]  
@@ -90,7 +92,7 @@ def second_page(br,police_id):
 	YearEndARR.append(None)
 	#print(DataTypeARR)
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	br[DataType.name] = ['1','2','3','4']	
+	br[DataType.name] = ['1','2']	
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	if police_id != None:
 		br[CrimeCrossId.name] = [str(police_id)] 
@@ -110,32 +112,30 @@ def alter_html(html):
 	df.columns = ['year','months-reporting','population-coverage','VC_violent-crime-total',
 				  'VC_murder-and-nonnegligent-manslaughter','VC_forcible-rape','VC_robbery',
 				  'VC_aggravated-assault','PC_property-crime-total','PC_burglary','PC_larceny-theft',
-				  'PC_motor-vehicle-theft','VCR_violent-crime-total',
-				  'VCR_murder-and-nonnegligent-manslaughter','VCR_forcible-rape','VCR_robbery',
-				  'VCR_aggravated-assault','PCR_property-crime-total','PCR_burglary','PCR_larceny-theft','PCR_motor-vehicle-theft']
+				  'PC_motor-vehicle-theft']
 	#,'PCR_property-crime-total','PCR_burglary','PCR_larceny-theft','PCR_motor-vehicle-theft'
-	df['police-dept'] = caption.replace('\r\n','').replace('        ','')
-
+	both = caption.replace('\r\n','').replace('        ','').replace('Sheriff Department','').replace('Sheriff Deptartment','')
+	df['county-name'] = both.split(', ')[0]
+	df['state'] = both.split(', ')[1]
 	#print(df)
 	return df
 
 def main():
-
-
 	#create dataframe with appropriate columns by running 
 	#functions for the first police id/state, and deleting all row values
 	columns = ['year','months-reporting','population-coverage','VC_violent-crime-total',
 			  'VC_murder-and-nonnegligent-manslaughter','VC_forcible-rape','VC_robbery',
 			  'VC_aggravated-assault','PC_property-crime-total','PC_burglary','PC_larceny-theft',
-			  'PC_motor-vehicle-theft','VCR_violent-crime-total',
-			  'VCR_murder-and-nonnegligent-manslaughter','VCR_forcible-rape','VCR_robbery',
-			  'VCR_aggravated-assault','PCR_property-crime-total','PCR_burglary','PCR_larceny-theft','PCR_motor-vehicle-theft']
+			  'PC_motor-vehicle-theft']
 	index = np.arange(1) # array of numbers for the number of samples
 	large_df = pd.DataFrame(columns=columns, index = index)
 	#df is now an empty dataframe with [0 rows x 22 columns]
 	#~~~~~~~~~~~~~~~~~~
-	SI_arr = range(8,9) #set to [range(1,52)] when we want all data
+	SI_arr = [1,3,4,5,6,8,10,11,12,13,14,15,16,17,18,19,20,21,23,24,25,26,27,28,29,32,33,34,36,37,38,41,42,43,44,45,47,48,49,50,51] #set to [range(1,52)] when we want all data
+	print(len(SI_arr))
+	#Manually edited SI_arr with StateId's that aren't messed up. 
 	#~~~~~~~~~~~~~~~~~~
+	df_list = []
 	for num in SI_arr:
 		print('STARTING NEW STATE : ', num)
 		br = mechanize.Browser()
@@ -143,7 +143,8 @@ def main():
 		br.set_handle_refresh(False) 
 		response = br.open('https://www.ucrdatatool.gov/Search/Crime/Local/JurisbyJuris.cfm')
 		altered_br = first_page(br, str(num))
-		CCI_arr = fill_crime_cross_ids(altered_br)
+		#print(altered_br)
+		CCI_arr = fill_crime_cross_ids(first_page(br, str(num)))
 		#print('FILLED CCI_arr : ', num)
 		#print(CCI_arr)
 		counter = 1
@@ -153,21 +154,23 @@ def main():
 			br.set_handle_robots(False)  
 			br.set_handle_refresh(False) 
 			response = br.open('https://www.ucrdatatool.gov/Search/Crime/Local/JurisbyJuris.cfm')
-			print('moving on after new BR element')
+			#print('moving on after new BR element')
 			html = second_page(first_page(br, str(num)),police_id)
 			df = alter_html(html)
 			#print(df)
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			df.to_csv('data.csv', encoding='utf-8')
+			#df.to_csv('data.csv', encoding='utf-8')
 			#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			large_df.append(df)
+			#large_df.append(df)
+			df_list.append(df)
 			print('DONE WITH POLICE ID NUMBER : ', counter)
 			counter += 1
-		print('reset CCI_arr')
+		#print('reset CCI_arr')
 		CCI_arr = []
-	print(large_df)
+	result = pd.concat(df_list)
+	print(result)
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	#large_df.to_csv('data.csv', sep='\t', encoding='utf-8')
+	result.to_csv('final.csv', encoding='utf-8')
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 main()
